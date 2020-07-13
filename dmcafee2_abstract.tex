@@ -1,0 +1,109 @@
+\documentclass[tikz]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[tmargin=2in]{geometry}
+\usepackage{setspace}
+\usepackage{verbatim}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{pgfplots}
+\usepackage{graphics}
+\usepackage{csvsimple}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{pgfplotstable}
+\usepackage[toc,page]{appendix}
+\usepackage{indentfirst}
+\usepackage{float}
+\usepackage{setspace}
+\usetikzlibrary{positioning}
+
+\doublespacing
+\pagenumbering{gobble}
+
+\pgfplotsset{every axis/.style={scale only axis}}
+
+\begin{document}
+\singlespacing
+
+\noindent
+\textit{\textbf{Researcher:}} Dustin McAfee \\
+\textbf{Presentation Title:} High Performance Clustering of Electroencephalogram (EEG) Data for Prediction of Seizure Events \\
+\textbf{Institution:} University of Tennessee, Knoxville \\
+\textbf{Department:} Department of Electrical Engineering and Computer Science 
+
+\section*{Abstract}
+Electroencephalography (EEG) is a noninvasive monitoring method that measures voltage fluctuations in the neurons of the brain due to ionic current. Certain events such as seizures tend to create abnormalities in EEG readings. The goal is to implement and run parallelized clustering algorithms for classification of seizure events from EEG readings. All programs are written in python 3.6 using the pyspark 2.2.0 library for parallelization. The EEG dataset consists of 11500 rows, each representing one second of EEG readings. Each one second observation has 178 voltage readings \cite{data}. The data is first z-normalized and projected onto its first 40 principal components, which represent about 95.88\% of the variance of the entire dataset. The projected data is then split into a training and validation dataset. The validation data represents about 23.5\% (2700 observations) of the entire dataset. \\
+
+Both K-Means and (Gaussian) Expectation Maximization (EM) are implemented with K = 2 and K = 3 clusters. Performance metrics such as confusion matrices, F1 scores, accuracy, precision, sensitivity, and specificity are calculated for each algorithm execution, and the implemented algorithms also give clustering evaluation metrics, such as the Dunn index for K-Means, and the Silhouette index for EM. Both algorithms pick the starting centroids via the K-Means++ method, which is an approximation algorithm for minimizing the intra-class variance \cite{kmeans++}. \\
+
+Non-seizure activity is generally centered around 0 Volts on all attributes, while seizure activity generally surrounds the non-seizure clustering on the outside. This can be shown by projecting the data into its first 3 principal components, as in the following Figure (\ref{fig:project}).
+
+\begin{figure}[H]
+		\centering
+	\begin{tikzpicture}[yscale=0.6, xscale=0.6]
+		\begin{axis}[
+			xtick pos=left,
+			ytick pos=left,
+			ztick pos=left,
+			xlabel= First Principal Component,
+			ylabel= Third Principal Component,
+			zlabel= Second Principal Component,
+		  ]
+		\addplot3+[
+			scatter/classes={0={blue}, 1={red}}, 
+			scatter, mark=*, only marks,
+			scatter src=explicit symbolic,
+			mark size=1.8,
+			nodes near coords align={center},
+		] table [x index=1, z index=2, y index=3, meta index=41, col sep=comma] 	{input/test/TestingData_Projected.txt};
+		\legend{No Seizure,Seizure}
+		\end{axis}
+	\end{tikzpicture}
+	\caption{Standardized Testing Dataset Projected onto First 3 Principal Components}
+	\label{fig:project}
+\end{figure}
+
+This clustering does not seem possible for the K-means algorithm, but was attempted anyway for contrast with the EM algorithm. K = 3 clusterings are attempted for both algorithms in hopes of classifying with high/medium/low risk categorizations, with the high risk category having a higher sensitivity rate than the K = 2 clusterings. \\
+
+As expected, the K-means algorithm does not perform well, with less than 15\% sensitivity on both K = 2 and K = 3 and for both the testing and validation datasets. EM with Gaussian clusters is implemented in an attempt to fit this data with higher performance. EM fits this clustering shape much better than K-Means, as expected, performing with much higher performance, overall. For K = 2, EM has 96.48\% accuracy and 95.85\% sensitivity for the training dataset, and 87.22\% accuracy and 81.10\% sensitivity for the validation dataset. The validation dataset projected onto the first three principal components and color coded from EM (K = 2) is shown in Figure \ref{fig:EM}, below. Note how these clusterings look very much like the clusterings from Figure \ref{fig:project}. \\
+
+\begin{figure}[H]
+		\centering
+	\begin{tikzpicture}[yscale=0.6, xscale=0.6]
+		\begin{axis}[
+			xtick pos=left,
+			ytick pos=left,
+			ztick pos=left,
+			xlabel= First Principal Component,
+			ylabel= Third Principal Component,
+			zlabel= Second Principal Component,
+		  ]
+		\addplot3+[
+			scatter/classes={0={blue}, 1={red}},
+ 			scatter, mark=*, only marks,
+			scatter src=explicit symbolic,
+			mark size=1.8,
+			nodes near coords align={center},
+		] table [x index=1, y index=2, z index=3, meta index=0, col sep=comma] 	{output/TestingData_EM_2.txt};
+		\end{axis}
+	\end{tikzpicture}
+	\caption{EM Clustering (K=2) of Standardized Testing Dataset Projected onto First 3 Principal Components}
+	\label{fig:EM}
+\end{figure}
+
+As expected, K = 3 yields a higher sensitivity rate for this dataset, however, the algorithm only classifies two groupings, as one of the clusters is deemed not likely on any observation. The accuracy and sensitivity for the training dataset is 67.32\% and 100.0\%, respectfully, and the accuracy and sensitivity for the validation dataset is 66.25\% and 92.23\%, respectfully. \\
+
+The EM algorithm performs much better than K-means with this data, and though increasing K from 2 to 3 does in fact increase the sensitivity when categorizing seizures, it decreases accuracy, precision, and specificity at an even higher rate. Future work involves implementation of spectral clustering algorithms, which may fit these high dimensional clusters better, and a K-Folds cross-validation approach, which may help generalize better for fitting the testing data.
+
+\begin{thebibliography}{666}
+\bibitem{data}
+Andrzejak RG, Lehnertz K, Rieke C, Mormann F, David P, Elger CE (2001) Indications of nonlinear deterministic and finite dimensional structures in time series of brain electrical activity: Dependence on recording region and brain state, Phys. Rev. E, 64, 061907
+
+\bibitem{kmeans++}
+Arthur, David \& Vassilvitskii, Sergei. (2007). K-Means++: The Advantages of Careful Seeding. Proc. of the Annu. ACM-SIAM Symp. on Discrete Algorithms. 8. 1027-1035. 10.1145/1283383.1283494. 
+\end{thebibliography}
+
+\end{document}
+
